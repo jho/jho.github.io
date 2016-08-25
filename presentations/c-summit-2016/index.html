@@ -365,7 +365,7 @@ class: center, middle
 
 ## Assumptions
 1. Want to reduce # of files pulled for a given query
-2. We are okay with a few false posivites
+2. We are okay with a few __false posivites__
 
 --
 
@@ -373,7 +373,9 @@ class: center, middle
 
 --
 
-.center[### Bloom Filters!]
+.center[
+# Bloom Filters!
+]
 
 ---
 
@@ -396,35 +398,55 @@ class: center, middle
 * Our keys have time encoded in them.  
 * Enables us to generate the partition path containing the row.
 
+--
+
 .center[
-### That was easy!
+## That was easy!
 ] 
 
 ---
 
 # Other reasons to re-invent wheel
 ### Parquet has support for filter pushdown
+
+--
+
 ### Spark has support for Parquet filter pushdown, but...
+
+--
+
 * Uses INT96 for Timestamp
     * No pushdown support: [SPARK-11784](https://issues.apache.org/jira/browse/SPARK-11784)
     * All our queries involve timestamps &#x1F622
 
+--
+
 * IP Addresses
     * Want to be able to push down CIDR range comparisons
+
+--
 
 ### Lack of pushdown leads to wasted I/O and GC pressure.
 
 ---
 
 # Offheap FTW
-* Wrote some custom "alterations" to parquet-mr 
-* Read from S3 into offheap byte buffers using our own Akka HTTP based S3 impl (not using s3a)
-* Parse parquet is all offheap including pushdown filters
-* Akka Streams let's us increase the parallelism of our I/O to better take
-advantage of S3
-    - Pipeline fetching files from S3 while Spark is crunching on the data from
-      others
-* May have to re-vist some of this for Spark 2.0
+
+--
+
+### Not using `S3AFileSystem` 
+* Custom Akka HTTP based S3 impl
+* Increases the parallelism I/O
+* Increases parallelism of decrypting and decoding 
+
+--
+
+### Parsing parquet is all offheap ByteBuffers including pushdown filters
+* Reduce GC pressure
+
+--
+
+### May have to re-vist some of this for Spark 2.0
 
 ---
 
@@ -440,39 +462,83 @@ small subsets to hot store based on customer interactions (edits, etc)
 
 ---
 
-# 1 More thing!
-* We now have
-    - Time sharded C* clusters with SOLR
-    - Cheap speedy Cold storage based on S3 and Spark
-* How do we handle queries to 3 different stores?
-    - C* 
-    - SOLR
-    - Spark 
-* Handle Timesharding and Functional Sharding?
-* Handle a bunch of other things none of these do natively?
-* Lot of good Scala query libraries but none of them support querying
-multiple heterogenous data stores in 1 query. 
-      - Quill
-      - Slick
-      - Apache Drill (not a library per say)
-* Nobody supports stitching together time series data from multiple stores in one
-query.
+# What have we done so far?
+
+--
+
+1. Time sharded C* clusters with SOLR
+
+--
+
+2. Cheap speedy Cold storage based on S3 and Spark
+
+--
+
+3. A mechanims for archiving data to S3
+
+---
+
+# Thats cool, but...
+
+--
+
+### How do we handle queries to 3 different stores?
+* C* 
+* SOLR
+* Spark 
+
+--
+
+### Handle Timesharding and Functional Sharding?
+
+--
+
+---
+
+# Lot's of Scala query DSL libraries:
+* Quill
+* Slick
+* Phantom
+* etc
+
+--
+
+.center[ 
+# AFAIK nobody supports:
+]
+
+1. Querying heterogenous data stores.
+
+--
+
+2. Stiching together data from heterogenous timestores.
+
+--
+
+3. Managing sharding:
+    * Configuration 
+    * Discovery
 
 ---
 
 # Enter Quaero:
-* Abstracts away datastore differences
-    - Query AST (Algebraic Data Type in Scala) 
-    - Command/Strategy pattern for easily plugging in new data stores
-* Deep understanding of sharding patterns like Time and Functional sharding
-    - Handles time based data merging of edits to cold data (edit is stored in hotstore)
-    - Implements overfetching for sorting and pagination across shards (similar like SOLR)
-* Exposes a query DSL similar to Phantom or Rogue
+
+--
+
+### Abstracts away datastore differences
+* Query AST (Algebraic Data Type in Scala) 
+* Command/Strategy pattern for easily plugging in new data stores
+
+--
+
+### Deep understanding of sharding patterns
+* Handles merging of time/functional sharded data
+* Adding shards is configuraton driven (no bespoke code for adding shards)
+
+--
+
+### Exposes a "typesafe" query DSL similar to Phantom or Rogue
 * Reduce/eliminate bespoke code for retrieving the same data from all 3 stores
-* Server support:
-    - Thrift   - TBD
-    - REST     - TBD
-    - Hive SQL - TBD
 
 ---
 
@@ -483,12 +549,13 @@ query.
 * Spark streaming support
 
 ---
+class: center, middle
 
-Summary
+# We are hiring!
 
----
+> [Careers@ProtectWise](https://www.protectwise.com/careers.html)
 
-We are hiring!
+> [@ProtectWise](https://www.protectwise.com/careers.html)
 
     </textarea>
     <script src="remark-latest.min.js"></script>
