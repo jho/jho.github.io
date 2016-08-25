@@ -38,69 +38,146 @@
 
 class: center, middle
 
-# Title
+# Cold Storage that isn’t glacial
+
+> Joshua Hollander, Principal Software Engineer
+
+> ProtectWise, Inc.
 
 ---
 
-# Agenda
+# Who are we and what do we do?
 
-1. Introduction
-2. Deep-dive
-3. ...
+### We record full fidelity Network Data
+
+--
+
+* Every network conversation (NetFlow)
+* Full fidelity packet data (PCAP)
+* Searchable detailed protocol data for:
+    * HTTP
+    * DNS
+    * DHCP
+    * Files
+    * Security Events (IDS)
+
+--
+
+### We analyze all that data and detect threats others can't see
 
 ---
 
-# Introduction
+# Network data piles up fast!
+
+--
+
+* Over 300 C* servers in production
+* 1200 total servers in EC2
+* Over 150TB in C*
+* About 90TB of SOLR indexes
+* 100TB of cold storage data
+* 2 PB of PCAP
+
+### And we are growing rapidly!
+
+---
+class: center, middle
+
+# So what?
+
+--
+
+### All those servers cost a lot of money
+
+---
+
+# Right sizing our AWS bill
+
+### This is all time series data:
+* Lots of writes/reads to recent data
+* Some reads and very few writes to older data
+
+--
+
+### So just move all that older, *cold data*, to cheaper storage.
+
+> How hard could that possibly be?
 
 ---
 
 # Problem 1: 
-* Data distributed evenly across all these expensive servers
-    * Using Size Tiered Compaction
-    * New and old data in same SSTables
-    * Can't just migrate old SSTables to new cheap servers
-* Solution: use Date Tiered Compaction?  
-    * Requirements too strict 
-    * We have "long running" records which we update over time
-    * We allow customers to update historical data (tags, notes, etc)
-    * Retrospection
-    * Won't help with Problem #2
-    * What SSTables can you safely "drop/migrate"
-    * Result: FAIL
+
+#### Data distributed evenly across all these expensive servers
+* Using Size Tiered Compaction
+* Can't just migrate old SSTables to new cheap servers
+
+--
+
+#### Solution: use Date Tiered Compaction?  
+* We update old data regularly 
+* What SSTables can you safely "drop/migrate"
+
+#### Result: 
+
+--
+
+.center[![image](images/fail.png)]
 
 ---
 
 # Problem 2: DSE/SOLR re-index takes *forever*!
-* We have nodes with up to 300GB of SOLR indexes
-    * Re-index of data required to bootstrap new nodes after streaming
-    * Re-index can take a week or more!!!
-    * At that pace we simply can't bootstrap new nodes
-* Solution:
-    * Time sharded clusters in application code
-    * Fanout searches for large time windows
-    * Assembly results in code (using same algorithm SOLR does)
-* Result: `¯\_(ツ)_/¯`
-    * Interesting project
-    * Works well enough
-    * Big drain on developer and operations time.
-    * Lots of code written, time not expended on features.
+
+#### We have nodes with up to 300GB of SOLR indexes
+* Re-index of data required to bootstrap new nodes after streaming
+* Re-index can take a week or more!!!
+* At that pace we simply can't bootstrap new nodes
+
+--
+
+#### Solution:
+* Time sharded clusters in application code
+* Fanout searches for large time windows
+* Assembly results in code (using same algorithm SOLR does)
+
+--
+
+#### Result: 
+
+.big[
+`¯\_(ツ)_/¯`
+]
 
 ---
     
-# Problem 3: Still too costly
-* Cold data servers still to expensive compared to usage
-* DevOps time suck is massive for rolling new shard
+# What did we gain?
+
+### We can now migrate older timeshards to cheap servers!
+
+--
+
+### However:
+* Cold data servers still way to expensive compared to usage
+* DevOps time suck is massive 
+* Product wants us to store even more data!
+
+---
 
 # Throwing ideas at the wall
-* We have this giant data warehouse that doesn't cost nearly as much
-    * Response time too slow: 5 seconds to pull single record by ID!
-    * ETL pipeline to warehouse horribly complex and unreliable
-    * ETL latency measured in hours
-    * Data model way different
-    * Etc, etc, etc 
-* Well Facebook stores way more data than this, and it's in MySQL (ugh)
-* What about Elastic Search, HBase, Hive, Parquet, MongoDB?
-* Wait, hold on. This Parquet thing is interesting...
+
+### We have this giant data warehouse that doesn't cost nearly as much
+* Response time too slow: 10 seconds to pull single record by ID!
+* Complex ETL pipeline where latency measured in hours
+* Data model way different
+* No updates
+* Reliability, etc, etc
+
+--
+
+### What about Elastic Search, HBase, Hive/Parquet, MongoDB?
+
+--
+
+### Wait, hold on. This Parquet thing is interesting...
 
 ---
 
@@ -266,11 +343,13 @@ select count(*) from events where ip = '192.168.0.1' and cid = 1 and year = 2016
 |   ├── year=2015
 |   └── year=2016
 |        |── month=0
-|        |   └── ENTIRE MONTH WE COULD SKIP 
+|        |   └── day=0
+|        |       └── hour=0
+|        |           └── 192.168.0.1_was_NOT_here.parquet
 |        └── month=1
 |            └── day=0
 |                └── hour=0
-|                    └── THE FILE WITH RESULTS!
+|                    └── 192.168.0.1_WAS_HERE.parquet
 └── cid=Y
 ```
 
@@ -355,7 +434,7 @@ class: center, middle
 
 --
 
-## What about Problem #2
+### What about Problem #2?
 
 ---
 
@@ -436,12 +515,11 @@ class: center, middle
 
 ### Not using `S3AFileSystem` 
 * Custom Akka HTTP based S3 impl
-* Increases the parallelism I/O
-* Increases parallelism of decrypting and decoding 
+* Parallelize __decrypting__ and decoding of pages
 
 --
 
-### Parsing parquet is all offheap ByteBuffers including pushdown filters
+### Parsing/filtering of Parquet is all offheap ByteBuffers
 * Reduce GC pressure
 
 --
@@ -451,14 +529,26 @@ class: center, middle
 ---
 
 # Archiving
-* Currently, when Time shard fills up
-    - Roll new hot time shard
-    - Run spark job to Archive data to S3
-    - Swap out "warm" shard for cold storage
-    - Drop the "warm" shard
-* Nonideal process, but deals with a lot of legacy requirements/infra
-* Hoping to begin streaming data straight to cold and then only materialize 
-small subsets to hot store based on customer interactions (edits, etc)
+
+--
+
+### Currently, when Time shard fills up:
+
+1. Roll new hot time shard
+2. Run Spark job to Archive data to S3
+3. ~~Swap out "warm" shard for cold storage~~ (automagical)
+4. Drop the "warm" shard
+
+--
+
+### Non-ideal process, but deals with a legacy requirements
+
+--
+
+### TODO:
+1. Stream data straight coldstore.
+2. Materialize customer edits in hotstore.
+3. Hot/cold data merged at query time.
 
 ---
 
@@ -474,7 +564,7 @@ small subsets to hot store based on customer interactions (edits, etc)
 
 --
 
-3. A mechanims for archiving data to S3
+3. A mechanim for archiving data to S3
 
 ---
 
@@ -553,9 +643,9 @@ class: center, middle
 
 # We are hiring!
 
-> [Careers@ProtectWise](https://www.protectwise.com/careers.html)
+> Interwebs: [Careers @ Protectwise](https://www.protectwise.com/careers.html)
 
-> [@ProtectWise](https://www.protectwise.com/careers.html)
+> Twitter: [@ProtectWise](https://twitter.com/ProtectWise)
 
     </textarea>
     <script src="remark-latest.min.js"></script>
