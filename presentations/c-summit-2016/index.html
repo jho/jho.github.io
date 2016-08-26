@@ -1,17 +1,34 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Title</title>
+    <title>Cold Storage that isn't glacial</title>
     <meta charset="utf-8">
     <style>
       @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
       @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
       @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
 
-      body { font-family: 'Droid Serif'; }
+      body { 
+        font-family: 'Droid Serif'; 
+      }
       h1, h2, h3 {
         font-family: 'Yanone Kaffeesatz';
         font-weight: normal;
+      }
+
+      .center table {
+        border-collapse: collapse;
+        margin-left:auto; 
+        margin-right:auto;
+      }
+
+      .center td {
+        text-align: left;
+      }
+
+      .center img {
+        max-width:100%;
+        max-height:100%;
       }
 
       table {
@@ -26,8 +43,30 @@
         border: 1px solid grey;
       }
 
+      a {
+        color: grey;
+      }
+
+      a:visited {
+        color: grey;
+      }
+
       .big {
-        font-size: xx-large;
+        font-size: 48px;
+      }
+
+      .inverse {
+        background: #272822;
+        background-image: url("images/monk.svg");  
+        background-size: 120% 120%;
+        background-image: linear-gradient(to bottom, rgba(39, 40, 34, 0.97) 0%,rgba(39, 40, 34, 0.99) 100%), url("images/monk.svg");
+        background-repeat: no-repeat;
+        background-position: center; 
+        color: #a3a3a3;
+      }
+      .inverse h1, .inverse h2, .inverse h3 {
+        color: #f8f8f8;
+        line-height: 0.8em;
       }
 
       .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; }
@@ -36,16 +75,16 @@
   <body>
     <textarea id="source">
 
-class: center, middle
+class: center, middle, inverse
 
 # Cold Storage that isn’t glacial
 
-> Joshua Hollander, Principal Software Engineer
+##### Joshua Hollander, Principal Software Engineer
 
-> ProtectWise, Inc.
+### ![image](images/monk.svg) ProtectWise
 
 ---
-
+class: inverse
 # Who are we and what do we do?
 
 ### We record full fidelity Network Data
@@ -53,7 +92,13 @@ class: center, middle
 --
 
 * Every network conversation (NetFlow)
+
+--
+
 * Full fidelity packet data (PCAP)
+
+--
+
 * Searchable detailed protocol data for:
     * HTTP
     * DNS
@@ -371,7 +416,7 @@ select count(*) from events where ip = '192.168.0.1' and cid = 1 and year = 2016
 
 # Problem #2    
 * Pulling potentially thousands of files from S3. 
-* **Slow/Costly!**
+* **Slow and Costly!**
 
 ---
  
@@ -380,30 +425,16 @@ select count(*) from events where ip = '192.168.0.1' and cid = 1 and year = 2016
 ### Put partition info and file listings in a db ala Hive. 
 
 ### Why not just use Hive?
-
-.center[
-    ## See problem #2 
-]
+* Still not fast enough
+* Also does not help with Problem #2
 
 ---
 
-# SOLR to the Rescue!
+# DSE/SOLR to the Rescue!
 
 --
 
 ### Store file meta data in SOLR 
-
---
-
-### Filter 500,000 files in < 100ms 
-
---
-
-* Hive: > 5s
-
---
-
-* S3 "directory" listing: **> 5 minutes!**
 
 --
 
@@ -412,6 +443,40 @@ select count(*) from events where ip = '192.168.0.1' and cid = 1 and year = 2016
 ```sql
 select count(*) from events where month = 6 
 ```
+--
+
+### Avoids pulling all meta in Spark driver
+1. Get partition counts and schema info from SOLR driverside
+2. Submit SOLR RDD to cluster
+3. Run `mapPartitions` on SOLR RDD and turn into Parquet RDDs
+
+> As an optimization for small filesets we pull the SOLR rows driver side
+
+---
+class: middle
+
+.center[#Boxitecture
+
+![image](images/boxitecture.png)
+
+]
+
+---
+
+
+class: center, middle
+
+#Performance gains!
+
+.center[ 
+
+    Source     | Scan/Filter Time  
+   ---------- | ----------------- 
+   SOLR       | < 100 milliseconds 
+   Hive       | > 5 seconds
+   S3 directory listing | > 5 ***minutes!!!***
+
+]
 
 ---
 
@@ -471,18 +536,18 @@ class: center, middle
 
 --
 
-### Need to retain some C* functionality
+#### Need to retain this C* functionality
 
 --
 
-### Spark/Parquet has no direct support
+#### Spark/Parquet has no direct support
 > What partition would it choose?
 
 > The partition would have to be encoded in the key?! .big[&#x1f914;]
 
 --
 
-### Solution:
+#### Solution:
 * Our keys have time encoded in them
 * Enables us to generate the partition path containing the row
 
@@ -494,7 +559,10 @@ class: center, middle
 
 ---
 
-# Other reasons to re-invent the wheel
+# Other reasons to "customize" 
+
+--
+
 ### Parquet has support for filter pushdown
 
 --
@@ -510,30 +578,13 @@ class: center, middle
 --
 
 * IP Addresses
-    * Want to be able to push down CIDR range comparisons
+    * Spark, Impala, Presto have no direct support
+    * Use string or binary
+    * Wanted to be able to push down CIDR range comparisons
 
 --
 
-### Lack of pushdown leads to wasted I/O and GC pressure.
-
----
-
-# Offheap FTW
-
---
-
-### Not using `S3AFileSystem` 
-* Custom Akka HTTP based S3 impl
-* Parallelize __decrypting__ and decoding of pages
-
---
-
-### Parsing/filtering of Parquet is all offheap ByteBuffers
-* Reduce GC pressure
-
---
-
-### May have to re-visit some of this for Spark 2.0
+### Lack of pushdown for these leads to wasted I/O and GC pressure.
 
 ---
 
@@ -557,7 +608,7 @@ class: center, middle
 ### TODO:
 1. Stream data straight to cold storage
 2. Materialize customer edits in to hot storage
-3. Merge hot and cold data at query time
+3. ~~Merge hot and cold data at query time~~ (already done) 
 
 ---
 
@@ -640,13 +691,13 @@ class: center, middle
 * Reduce/eliminate bespoke code for retrieving the same data from all 3 stores
 
 ---
+class: center, middle
 
 # Open Sourcing? Maybe!?
-## There is still a lot of work to be done
-## Spark 2.0 upgrade
+### There is still a lot of work to be done
 
 ---
-class: center, middle
+class: center, middle, inverse
 
 # We are hiring!
 
