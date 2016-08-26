@@ -272,7 +272,7 @@ class: center, middle, inverse
 --
 
 ### Schema
-* Files encode schema and other metadata
+* Files encode schema and other meta-data
 * Support exists for merging disparate schema amongst files
 
 ---
@@ -395,7 +395,7 @@ class: center, middle, inverse
 
 class: center
 
-# Partioning problems
+# Partitioning problems
 ### Customers generally ask questions such as: 
 
 > "Over the last 6 months, how many times did I see IP X using protocol Y?"
@@ -414,7 +414,7 @@ class: center
 
 ---
 
-# Partioning problems
+# Portioning problems
 
 ## Queries spanning large time windows:
 
@@ -477,11 +477,11 @@ select count(*) from events where month = 6
 --
 
 ### Avoids pulling all meta in Spark driver
-1. Get partition counts and schema info from SOLR driverside
+1. Get partition counts and schema info from SOLR driver-side
 2. Submit SOLR RDD to cluster
 3. Run `mapPartitions` on SOLR RDD and turn into Parquet RDDs
 
-> As an optimization for small filesets we pull the SOLR rows driver side
+> As an optimization for small file sets we pull the SOLR rows driver side
 
 ---
 class: middle
@@ -534,7 +534,7 @@ class: center, middle, inverse
    ------------- | ------------- | --------------
    Protocol      | Medium (9000) | .center[&#x274C]
    Port          | High (65535)  | .center[&#x274C&#x274C]
-   IP Addresss   | Astronomically High (3.4 undecillion) | .center[&#x274C&#x274C&#x274C]
+   IP Addresses   | Astronomically High (3.4 undecillion) | .center[&#x274C&#x274C&#x274C]
 
 
 .center[
@@ -549,7 +549,7 @@ class: center, middle, inverse
 
 ## Assumptions
 1. Want to reduce # of files pulled for a given query
-2. Cannot store all extact values in SOLR 
+2. Cannot store all exact values in SOLR 
 3. We are okay with a few __false positives__
 
 --
@@ -580,7 +580,7 @@ Term        | Doc IDs
 
 ### Terms are going to grow out of control
 
-### If only could constrain to a reasonble number of values?
+### If only could constrain to a reasonable number of values?
 
 ---
 # Terms as a "bloom filter"
@@ -751,7 +751,7 @@ class: center, middle, inverse
 
 ---
 
-# Thats cool, but...
+# That's cool, but...
 
 --
 
@@ -780,15 +780,15 @@ class: center, middle, inverse
 # AFAIK nobody supports:
 ]
 
-1. Querying heterogenous data stores
+1. Querying heterogeneous data stores
 
 --
 
-2. Stitching together data from heterogenous timestores
+2. Stitching together data from heterogeneous timestores
 
 --
 
-3. Managing sharding:
+3. Managing shorting:
     * Configuration 
     * Discovery
 
@@ -798,7 +798,7 @@ class: center, middle, inverse
 
 --
 
-### Abstracts away datastore differences
+### Abstracts away data store differences
 * Query AST (Algebraic Data Type in Scala) 
 * Command/Strategy pattern for easily plugging in new data stores
 
