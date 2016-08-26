@@ -177,49 +177,51 @@ class: center, middle
 
 --
 
-### Wait, hold on. This Parquet thing is interesting...
+### Wait. Hold on! This Parquet thing is interesting...
 
 ---
 
 # Parquet
 
-* Columnar storage format
-    - High compression rate
-    - Really fast for read subsets of columns and doing aggregations
-* Widely used in Hadoop/Spark setups to create massive low cost data lakes
-* Ecosystem support getting pretty mature
+--
+
+### Columnar
+* Projections are very efficient 
+* Enables vectorized execution
+
+--
+
+### Compressed 
+* Repeated values become cheap 
+* Using Run Length Encoding
+* Throw Snappy, LZO, or LZ4 on top of that
+
+--
+
+### Schema
+* Files encode schema and other metadata
+* Support exists for merging disparate schema amongst files
 
 ---
 
 # Parquet: Some details
 
-### Row Group: 
+--
+
+### Row Group 
 * Within each row group data is arranged by column in chunks
 * One chunk for each column in the data set
 
-### Column Chunk: 
+--
+
+### Column Chunk 
 * Chunk of data for an individual column
 * Column chunks are sub-divided into pages for compression and encoding
 
-### Page:
+--
+
+### Page
 * Column chunks are divided up into pages for I/O
-
----
-
-# Parquet Advantages:
-
-### Columnar
-* Projections are very efficient 
-* Enables Vectorized execution
-
-### Schema
-* Files encode schema
-* Can handle schema migrations
-
-### Compression 
-* Repeated values become cheap 
-* Using Run Length Encoding
-* Throw snappy, lzo, lz4, etc on top of that
 
 ---
 
@@ -233,20 +235,27 @@ class: center, middle
 
 class: center, middle
 
-## Need to get data out of Cassandra:
+## Need to get data out of Cassandra
+
+--
 
 > Spark seems good for that 
 
-## Need to put the data somewhere:
+--
+
+## Need to put the data somewhere
+
+--
 
 > S3 is really cheap and fairly well supported by Spark
 
-## Need to query the data:
+--
+
+## Need to be able to query the data
+
+--
 
 > Spark seems good for that too
-
-
-### Cool so just throw Spark at the problem, we are done right?
 
 ---
 
@@ -263,10 +272,10 @@ class: center, middle
 ### Sizing parquet 
 
 --
-* Parquet docs recommends 1GB files for HDFS
+* Parquet docs recommend 1GB files for HDFS
 --
 
-* For S3 seems to be better between 128 to 256MB
+* For S3 the sweet spot appears to be 128 to 256MB
 
 --
 
@@ -303,7 +312,7 @@ class: center, middle
 
 class: center, middle
     
-# Big Improvement:
+# Big Improvement!
 ### Now a customer can query a time range quickly
 
 ---
@@ -633,10 +642,8 @@ class: center, middle
 ---
 
 # Open Sourcing? Maybe!?
-* Kind of Protectwise infra specific ATM
-* Needs some cleanup
-* Spark 2.0 re-work
-* Spark streaming support
+## There is still a lot of work to be done
+## Spark 2.0 upgrade
 
 ---
 class: center, middle
