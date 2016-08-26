@@ -115,7 +115,7 @@ class: center, middle
 
 #### Solution: use Date Tiered Compaction?  
 * We update old data regularly 
-* What SSTables can you safely "drop/migrate"
+* What SSTables can you safely migrate?
 
 #### Result: 
 
@@ -129,15 +129,15 @@ class: center, middle
 
 #### We have nodes with up to 300GB of SOLR indexes
 * Re-index of data required to bootstrap new nodes after streaming
-* Re-index can take a week or more!!!
-* At that pace we simply can't bootstrap new nodes
+* Re-index can take a week *or more*!!!
+* At that pace we simply cannot bootstrap new nodes
 
 --
 
 #### Solution:
 * Time sharded clusters in application code
 * Fanout searches for large time windows
-* Assembly results in code (using same algorithm SOLR does)
+* Assemble results in code (using same algorithm SOLR does)
 
 --
 
@@ -151,12 +151,12 @@ class: center, middle
     
 # What did we gain?
 
-### We can now migrate older timeshards to cheap servers!
+## We can now migrate older timeshards to cheaper servers!
 
 --
 
-### However:
-* Cold data servers still way to expensive compared to usage
+## However:
+* Cold data servers are still too expensive 
 * DevOps time suck is massive 
 * Product wants us to store even more data!
 
@@ -164,16 +164,16 @@ class: center, middle
 
 # Throwing ideas at the wall
 
-### We have this giant data warehouse that doesn't cost nearly as much
-* Response time too slow: 10 seconds to pull single record by ID!
+### We have this giant data warehouse, let's use that 
+* Response time is too slow: 10 seconds to pull single record by ID!
 * Complex ETL pipeline where latency measured in hours
-* Data model way different
-* No updates
+* Data model is different
+* Read only
 * Reliability, etc, etc
 
 --
 
-### What about Elastic Search, HBase, Hive/Parquet, MongoDB?
+### What about Elastic Search, HBase, Hive/Parquet, MongoDB, etc, etc?
 
 --
 
@@ -263,7 +263,7 @@ class: center, middle
 ### Sizing parquet 
 
 --
-* Parquet docs recomends 1GB files for HDFS
+* Parquet docs recommends 1GB files for HDFS
 --
 
 * For S3 seems to be better between 128 to 256MB
@@ -271,7 +271,7 @@ class: center, middle
 --
 
 ### We have terabytes of files
-### Scans take for ever!
+### Scans take *forever*!
 
 --
 
@@ -311,9 +311,9 @@ class: center, middle
 class: center
 
 # Partioning problems
-### Customers generally ask questions like: 
+### Customers generally ask questions such as: 
 
-> "Over the last 6 months did how many times did I see IP X using protocol Y?"
+> "Over the last 6 months, how many times did I see IP X using protocol Y?"
 
 --
 
@@ -378,29 +378,6 @@ select count(*) from events where ip = '192.168.0.1' and cid = 1 and year = 2016
 
 ---
 
-# Solving problem #2
-### Still need to pull potentially thousands of files to answer our query!
---
-
-### Can we partition differently? 
---
-
-### By what?
---
-
-   Field         | Cardinality   | Result
-   ------------- | ------------- | --------------
-   Protocol      | Medium (9000) | .center[&#x274C]
-   Port          | High (65535)  | .center[&#x274C&#x274C]
-   IP Addresss   | Astronomically High (3.4 undecillion) | .center[&#x274C&#x274C&#x274C]
-
-
-.center[
-    ### Nope! Nope! Nope!
-]
-
----
-
 # SOLR to the Rescue!
 
 --
@@ -428,6 +405,7 @@ select count(*) from events where month = 6
 ```
 
 ---
+
 class: center, middle
 
 # Problem #1 Solved!
@@ -438,13 +416,35 @@ class: center, middle
 
 ---
 
+# Solving problem #2
+### Still need to pull potentially thousands of files to answer our query!
+
+--
+
+### Can we partition differently? 
+
+--
+
+   Field         | Cardinality   | Result
+   ------------- | ------------- | --------------
+   Protocol      | Medium (9000) | .center[&#x274C]
+   Port          | High (65535)  | .center[&#x274C&#x274C]
+   IP Addresss   | Astronomically High (3.4 undecillion) | .center[&#x274C&#x274C&#x274C]
+
+
+.center[
+    ### Nope! Nope! Nope!
+]
+
+---
+
 # Searching High Cardinality Data
 
 --
 
 ## Assumptions
 1. Want to reduce # of files pulled for a given query
-2. We are okay with a few __false posivites__
+2. We are okay with a few __false positives__
 
 --
 
@@ -469,13 +469,13 @@ class: center, middle
 ### Spark/Parquet has no direct support
 > What partition would it choose?
 
-> Key would have to be encoded partition?! .big[&#x1f914;]
+> The partition would have to be encoded in the key?! .big[&#x1f914;]
 
 --
 
 ### Solution:
-* Our keys have time encoded in them.  
-* Enables us to generate the partition path containing the row.
+* Our keys have time encoded in them
+* Enables us to generate the partition path containing the row
 
 --
 
@@ -485,7 +485,7 @@ class: center, middle
 
 ---
 
-# Other reasons to re-invent wheel
+# Other reasons to re-invent the wheel
 ### Parquet has support for filter pushdown
 
 --
@@ -496,7 +496,7 @@ class: center, middle
 
 * Uses INT96 for Timestamp
     * No pushdown support: [SPARK-11784](https://issues.apache.org/jira/browse/SPARK-11784)
-    * All our queries involve timestamps &#x1F622
+    * All our queries involve timestamps
 
 --
 
@@ -524,7 +524,7 @@ class: center, middle
 
 --
 
-### May have to re-vist some of this for Spark 2.0
+### May have to re-visit some of this for Spark 2.0
 
 ---
 
@@ -541,14 +541,14 @@ class: center, middle
 
 --
 
-### Non-ideal process, but deals with a legacy requirements
+### Not an ideal process, but deals with legacy requirements
 
 --
 
 ### TODO:
-1. Stream data straight coldstore.
-2. Materialize customer edits in hotstore.
-3. Hot/cold data merged at query time.
+1. Stream data straight to cold storage
+2. Materialize customer edits in to hot storage
+3. Merge hot and cold data at query time
 
 ---
 
@@ -564,7 +564,7 @@ class: center, middle
 
 --
 
-3. A mechanim for archiving data to S3
+3. A mechanism for archiving data to S3
 
 ---
 
@@ -597,11 +597,11 @@ class: center, middle
 # AFAIK nobody supports:
 ]
 
-1. Querying heterogenous data stores.
+1. Querying heterogenous data stores
 
 --
 
-2. Stiching together data from heterogenous timestores.
+2. Stitching together data from heterogenous timestores
 
 --
 
@@ -623,7 +623,7 @@ class: center, middle
 
 ### Deep understanding of sharding patterns
 * Handles merging of time/functional sharded data
-* Adding shards is configuraton driven (no bespoke code for adding shards)
+* Adding shards is configuration driven
 
 --
 
