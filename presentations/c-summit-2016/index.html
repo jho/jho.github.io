@@ -224,6 +224,8 @@ class: center, middle, inverse
     
 # What did we gain?
 
+--
+
 ## We can now migrate older timeshards to cheaper servers!
 
 --
@@ -284,6 +286,7 @@ class: center, middle, inverse
  .center[![image](images/parquet1.png)]
 ]
 
+
 .right-column[
 
 #### Row Group 
@@ -296,7 +299,6 @@ class: center, middle, inverse
 
 #### Page
 * Column chunks are divided up into pages for I/O
-
 ]
 
 ---
@@ -414,7 +416,7 @@ class: center
 
 ---
 
-# Portioning problems
+# Partitioning problems
 
 ## Queries spanning large time windows:
 
@@ -445,6 +447,8 @@ select count(*) from events where ip = '192.168.0.1' and cid = 1 and year = 2016
 * Remember S3 is not really a file system
 * **Slow!**
 
+--
+
 # Problem #2    
 * Pulling potentially thousands of files from S3. 
 * **Slow and Costly!**
@@ -455,7 +459,12 @@ select count(*) from events where ip = '192.168.0.1' and cid = 1 and year = 2016
 
 ### Put partition info and file listings in a db ala Hive. 
 
+--
+
 ### Why not just use Hive?
+
+--
+
 * Still not fast enough
 * Also does not help with Problem #2
 
@@ -556,19 +565,20 @@ class: center, middle, inverse
 
 ### This sounds like a job for... 
 
---
+---
+class: center, middle 
 
-.center[
-### Bloom Filters!
+# Bloom Filters!
 
 ![image](images/bloom_filter.png)
-]
 
 ---
 
 # Indexing a "Searchable" Bloom Filter
 
-### SOLR index looks vaguely like
+--
+
+### Normal SOLR index looks vaguely like
 
 .medium[ 
 Term        | Doc IDs
@@ -578,9 +588,13 @@ Term        | Doc IDs
 8.8.8.8     | 1,2,3,4,5,6     
 ]
 
+--
+
 ### Terms are going to grow out of control
 
-### If only could constrain to a reasonable number of values?
+--
+
+### If only we could constrain to a reasonable number of values?
 
 ---
 # Terms as a "bloom filter"
@@ -593,7 +607,7 @@ Term        | Doc IDs
 
 --
 
-#### What if our terms where the *offsets* of the Bloom Filter values?
+What if our terms were the __*offsets*__ of the Bloom Filter values?
 
 --
 
@@ -831,7 +845,11 @@ class: center, middle, inverse
     </textarea>
     <script src="remark-latest.min.js"></script>
     <script>
-      var slideshow = remark.create();
+        var slideshow = remark.create({
+            ratio: '16:9', 
+            countIncrementalSlides: false,
+            highlightStyle: 'github'
+        });
     </script>
   </body>
 </html>
